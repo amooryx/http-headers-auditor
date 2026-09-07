@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="./banner.svg" alt="http-headers-auditor" width="800">
+</div>
+
 # HTTP Security Headers Auditor
 
 An automated script to scan server responses, verify HTTP security header compliance, and output structured security reports.
