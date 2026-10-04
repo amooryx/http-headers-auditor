@@ -4,42 +4,41 @@
 
 # HTTP Security Headers Auditor
 
-An automated script to scan server responses, verify HTTP security header compliance, and output structured security reports.
+A small, dependency-free command-line tool that requests an HTTP(S) URL and reports selected security headers from the final response. It checks header presence, recognizes CSP `frame-ancestors` as a framing control, and reports software versions explicitly exposed by `Server` or `X-Powered-By`.
 
-## 📋 Features
+The audit uses the final response only. HSTS is evaluated only for HTTPS responses; an HTTP response cannot establish HSTS. This tool checks response posture, not whether a policy is sufficiently restrictive or correct for a particular application.
 
-- **Security Header Auditing**: Checks for critical headers such as `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy`.
-- **Compliance Scoring**: Calculates a security score based on header presence and configuration strength.
-- **Verbose Leak Check**: Detects headers exposing server versions or framework signatures (`Server`, `X-Powered-By`).
-- **Structured Export**: Outputs findings in clean JSON, Markdown, or HTML.
+## Requirements
 
-## ⚙️ Installation
+- Python 3.10 or newer
+- No third-party packages
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/amooryx/http-headers-auditor.git
-   cd http-headers-auditor
-   ```
+## Usage
 
-2. Install dependencies:
-   ```bash
-   pip install requests
-   ```
-
-## 🚀 Usage
-
-Scan a single target domain:
-
-```bash
-python main.py -d target.com
+```text
+python main.py [options] target
 ```
 
-Save report to a JSON file:
+For example:
 
 ```bash
-python main.py -d target.com -o report.json
+python main.py https://example.com
+python main.py example.com --output report.json
+python main.py --yes --quiet https://example.com
 ```
 
-## 🛡️ Disclaimer
+The tool asks for authorization before making a request unless `--yes` is supplied. `--output` writes a JSON report and `--quiet` suppresses the banner and summary. The report contains the response status, effective origin, audited headers, and findings. It deliberately excludes cookies and other unexamined response headers.
 
-This tool is designed for educational and security compliance auditing purposes only. Ensure you have authorized permission prior to running scans against active environments.
+Requests use Python's default certificate and hostname verification, a 10-second timeout, and at most five redirects. HTTPS-to-HTTP redirects and redirects to unsupported URL schemes are rejected. The request does not forward credentials or custom headers.
+
+## Offline tests
+
+Run the test suite without network access:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Authorization
+
+Use only on systems you own or have explicit permission to assess. The tool makes a single GET request, plus any permitted redirects; it does not exploit findings or modify the target.
