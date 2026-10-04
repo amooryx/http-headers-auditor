@@ -67,6 +67,7 @@ class Context:
     findings: list = field(default_factory=list)
     data: dict = field(default_factory=dict)
     started: float = field(default_factory=time.time)
+    report_target: str | None = None
 
     # ---- output helpers ----
     def info(self, msg): print(f"{_c('[*]', 'b')} {msg}")
@@ -93,7 +94,8 @@ class Context:
 
     def to_json(self):
         return {
-            "tool": self.tool, "target": self.target,
+            "tool": self.tool,
+            "target": self.target if self.report_target is None else self.report_target,
             "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "findings": [{"title": f.title, "severity": f.severity, "detail": f.detail,
                           "evidence": f.evidence} for f in self.findings],
@@ -103,7 +105,8 @@ class Context:
 
 def main(tool: str, description: str, run: Callable[[Context], int],
          extra_args: Callable[[argparse.ArgumentParser], None] | None = None,
-         needs_target: bool = True) -> int:
+         needs_target: bool = True,
+         target_display: Callable[[str], str] | None = None) -> int:
     """Standard entrypoint. `run(ctx)` does the work and returns an exit code."""
     p = argparse.ArgumentParser(prog=tool, description=description)
     if needs_target:
@@ -120,9 +123,10 @@ def main(tool: str, description: str, run: Callable[[Context], int],
     if needs_target and not args.target:
         p.error("a target is required")
 
+    display_target = target_display(args.target) if target_display and args.target else args.target
     if not args.yes:
         try:
-            ans = input(f"Authorised to test {args.target or 'this host'}? [y/N] ")
+            ans = input(f"Authorised to test {display_target or 'this host'}? [y/N] ")
         except EOFError:
             ans = "n"
         if ans.strip().lower() not in ("y", "yes"):
@@ -134,11 +138,13 @@ def main(tool: str, description: str, run: Callable[[Context], int],
         bot = _sym("└─", "  ")
         dot = _sym("·", "-")
         print(_c(f"{top} {tool}", "bold") + _c(f" {dot} {description}", "d"))
-        if args.target:
-            print(_c(f"{bot} target: {args.target}", "d"))
+        if display_target:
+            print(_c(f"{bot} target: {display_target}", "d"))
         print()
 
     ctx = Context(args=args, tool=tool, target=args.target or "")
+    if target_display and args.target:
+        ctx.report_target = display_target
     try:
         code = run(ctx)
     except KeyboardInterrupt:
